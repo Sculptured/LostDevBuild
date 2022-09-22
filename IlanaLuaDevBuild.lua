@@ -95,11 +95,11 @@ util.toast("Loaded ilanas skidded script !\nYou're a "..YOURUSERNAME.."")
 -----------------------------------------------------------------------------------------------------------------------------------------
 
 --Begin Change+Ver Log
-menu.readonly(LogRoot, "Implementing new features")
-menu.readonly(LogRoot, "added sell delays")
-menu.readonly(LogRoot, "stabalised sell loop slightly")
+menu.readonly(LogRoot, "added Cleaner/entity wiper")
+menu.readonly(LogRoot, "added fake alert")
+menu.readonly(LogRoot, "Added Scroller for sell speed.")
 menu.divider(LogRoot, "Script Version")
-menu.readonly(LogRoot, "version 0.0.4")
+menu.readonly(LogRoot, "version 0.0.9")
 --end change+ver log
 
 --Begin credits
