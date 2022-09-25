@@ -1,9 +1,11 @@
-
 --HUGE THANKS TO CHRIS LAD. (orignal uploader.)
 --Silent#7114 you're not a dev, you're a skid without the capabilties to credit people < Also telling people to kys ins't great.
 --Thanks andy for helping me figure out a loop to then get this to where its at now.
 --Thanks jesus for not only coming in and not only debugging but becoming a second helping hands on this project <3
 --Thanks lance I took your autoload mb
+--Thanks ren + murten for the player throttler. i love you all
+
+
 
 util.keep_running()
 util.require_natives(1651208000)
@@ -95,11 +97,11 @@ util.toast("Loaded ilanas skidded script !\nYou're a "..YOURUSERNAME.."")
 -----------------------------------------------------------------------------------------------------------------------------------------
 
 --Begin Change+Ver Log
-menu.readonly(LogRoot, "added Cleaner/entity wiper")
-menu.readonly(LogRoot, "added fake alert")
-menu.readonly(LogRoot, "Added Scroller for sell speed.")
+menu.readonly(LogRoot, "Implementing new features")
+menu.readonly(LogRoot, "added sell delays")
+menu.readonly(LogRoot, "stabalised sell loop slightly")
 menu.divider(LogRoot, "Script Version")
-menu.readonly(LogRoot, "version 0.0.9")
+menu.readonly(LogRoot, "version 0.0.4")
 --end change+ver log
 
 --Begin credits
@@ -177,6 +179,26 @@ local Int_PTR = memory.alloc_int()
 -----------------------------------------------------------------------------------------------------------------------------------------------
 
 --Start MB cargo Help 
+
+function Cleanser()
+	local ct = 0
+	for k,ent in pairs(entities.get_all_vehicles_as_handles()) do
+		entities.delete_by_handle(ent)
+		ct = ct + 1
+	end
+	for k,ent in pairs(entities.get_all_peds_as_handles()) do
+		if not is_ped_player(ent) then
+			entities.delete_by_handle(ent)
+		end
+		ct = ct + 1
+	end
+	for k,ent in pairs(entities.get_all_objects_as_handles()) do
+		entities.delete_by_handle(ent)
+		ct = ct + 1
+	end
+end
+	
+
 function resupply()
     STATS._SET_PACKED_STAT_BOOL(32359 + 0, true,  util.get_char_slot())
     memory.write_int(memory.script_global(2689235 + 1 + (players.user() * 453) + 318 + 6), -1)
@@ -187,17 +209,35 @@ function sell()
     util.yield(speed)
 end
 
+function TELEPORT(X, Y, Z)
+	local Handle = PED.IS_PED_IN_ANY_VEHICLE(players.user_ped(), false) and PED.GET_VEHICLE_PED_IS_IN(players.user_ped(), false) or players.user_ped()
+	ENTITY.SET_ENTITY_COORDS(Handle, X, Y, Z)
+end
+
+function SET_HEADING(Heading)
+	ENTITY.SET_ENTITY_HEADING(players.user_ped(), Heading)
+end
+
+function tpfps()
+	TELEPORT(11201.99147, 12563.64814, 2665.666)
+	SET_HEADING(270)
+end
+
 menu.toggle_loop(MoneyRoot, "Remove transaction pending", {"Transaction pending"}, "Use if Transaction pending is fucking with you", function(on_click)
     menu.trigger_commands("removetransactionpending")
 end)
 
-    menu.slider(MoneyRoot, "Sell Speed", {"mbcspeed"}, "Modify Sell Speed (in miliseconds)",1000,4000, tonumber(0),25 ,function(speed_value)
+    menu.slider(MoneyRoot, "Sell Speed", {"mbcspeed"}, "Modify Sell Speed (in miliseconds)",900,4650, tonumber(0), 25, function(speed_value)
     util.yield()
     speed = speed_value
 end)
 
-menu.toggle_loop(MoneyRoot, "Crate Sell Loop", {"sourceloop"}, "Make sure to set a loop speed before enabling this", function(on_click)
-    sell()
+CrateSellLoop = menu.toggle_loop(MoneyRoot, "Crate Sell Loop", {"sourceloop"}, "Make sure to set a loop speed before enabling this", function(on_click)
+	if util.is_session_started() and not util.is_session_transition_active() then
+	tpfps()
+	Cleanser()
+	sell()
+	end
     if STAT_GET_INT("CONTOTALFORWHOUSE0",12) <= 5 then
     util.yield(0)
     resupply()
@@ -211,13 +251,51 @@ end, function()
     memory.write_float(memory.script_global(262145 + 1), 1)
 end)
 
-menu.action(MoneyRoot, "Source Crates", {"sourcecrate"}, "", function()
+menu.action(MoneyRoot, "Source Crates", {"sourcecrate"}, "Will source crates for Warehouse in slot 0", function()
     if util.is_session_started() and not util.is_session_transition_active() then
         STATS._SET_PACKED_STAT_BOOL(32359 + 0, true, util.get_char_slot())
         memory.write_int(memory.script_global(2689235 + 1 + (players.user() * 453) + 318 + 6), -1)
     end
 end)
---End MB cargo  help 
+
+--End MB cargo  help
+
+-----------------------------------------------------------------------------------------------------------------------------------------------
+
+--Unstuck shit
+local temoin = 0
+util.create_tick_handler(function()
+    while menu.get_value(CrateSellLoop) do
+        local n = STAT_GET_INT("CONTOTALFORWHOUSE0",12)
+        util.yield(speed)
+        if n == STAT_GET_INT("CONTOTALFORWHOUSE0",12) then
+            temoin = temoin + 1
+            if temoin >= 3 then
+                menu.trigger_commands("sourcecrate")
+                temoin = 0
+            end
+        else
+            temoin = 0
+        end
+    end
+end)
+
+local temoin = 0
+util.create_tick_handler(function()
+    while menu.get_value(CrateSellLoop) do
+        local n = STAT_GET_INT("CONTOTALFORWHOUSE0",12)
+        util.yield(speed)
+        if n == STAT_GET_INT("CONTOTALFORWHOUSE0",12) then
+            temoin = temoin + 1
+            if temoin >= 5 then
+                menu.trigger_commands("go solo")
+                temoin = 0
+            end
+        else
+            temoin = 0
+        end
+    end
+end)
 
 -----------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -280,4 +358,19 @@ end
 menu.action(GenRoot, "Custom Alert", {"ralert"}, "", function(on_click) menu.show_command_box("ralert ") end, function(text)
     custom_alert(text)
 end)
---Custom Alert
+--Custom Alert end
+
+--Player slots start
+menu.slider(GenRoot, "max players", {"maxplayers"}, "set the max players for the lobby\nonly works when host\ncredit to Ren#5219 for discovering this + murten for being amazing", 1, 32, 32, 1, function (value)
+    if Stand_internal_script_can_run then
+        NETWORK.NETWORK_SESSION_SET_MATCHMAKING_GROUP_MAX(0, value)
+        notification.notify("free slots",NETWORK.NETWORK_SESSION_GET_MATCHMAKING_GROUP_FREE(0))
+    end
+end)
+menu.slider(GenRoot, "max spectators", {"maxSpectators"}, "set the max spectators for the lobby\nonly works when host\ncredit to Ren#5219 for discovering this + murten for being amazing", 0, 2, 2, 1, function (value)
+    if Stand_internal_script_can_run then
+        NETWORK.NETWORK_SESSION_SET_MATCHMAKING_GROUP_MAX(4, value)
+        notification.notify("free slots",NETWORK.NETWORK_SESSION_GET_MATCHMAKING_GROUP_FREE(4))
+    end
+end)
+--Player slots end
